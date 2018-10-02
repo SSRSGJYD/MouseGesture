@@ -10,7 +10,11 @@ GUI部分文件说明：
 
 
 
-#### 接口：
+功能API部分文件说明：
+
++ action.h, action.cpp: 模拟按键、命令的实现
+
+#### 功能API：
 
 ```cpp
 void copy();
