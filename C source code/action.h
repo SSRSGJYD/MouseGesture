@@ -15,6 +15,11 @@ void WinUp(); //最大化；上半屏
 void WinDown(); //最小化；下半屏
 void WinLeft(); //左半屏
 void WinRight(); //右半屏
+void AltLeft(); //后退
+void AltRight(); //前进
+void mute(); //静音
+void soundUp(); //增大音量
+void soundDown(); //减小音量
 
 //控制面板
 void ControlPanel();
@@ -25,4 +30,5 @@ void NotePad();
 //计算器
 void Calculator();
 //在默认浏览器中搜索
-void WebSearch(const char* text);
+void WebSearchText(const char* text);
+void WebSearchAuto();

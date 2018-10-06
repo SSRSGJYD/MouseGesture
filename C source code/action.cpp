@@ -78,6 +78,36 @@ void WinRight()
 	TwoKeysAction(VK_LWIN, 0, VK_RIGHT, 0);
 }
 
+//Alt+Left
+void AltLeft()
+{
+	TwoKeysAction(VK_MENU, 0, VK_LEFT, 0);
+}
+
+//Alt+Right
+void AltRight()
+{
+	TwoKeysAction(VK_MENU, 0, VK_RIGHT, 0);
+}
+
+//静音
+void mute()
+{
+	SendMessage(hgWnd, WM_APPCOMMAND, 0x200eb0, APPCOMMAND_VOLUME_MUTE * 0x10000);
+}
+
+//增大音量
+void soundUp()
+{
+	SendMessage(hgWnd, WM_APPCOMMAND, 0x30292, APPCOMMAND_VOLUME_UP * 0x10000);
+}
+
+//减小音量
+void soundDown()
+{
+	SendMessage(hgWnd, WM_APPCOMMAND, 0x30292, APPCOMMAND_VOLUME_DOWN * 0x10000);
+}
+
 //控制面板
 void ControlPanel()
 {
@@ -103,11 +133,33 @@ void Calculator()
 }
 
 //在默认浏览器中搜索
-void WebSearch(const char* text)
+void WebSearchText(const char* text)
 {
 	int size = strlen(text);
 	char* url = (char*)malloc(size + 50);
 	sprintf_s(url, size+50,"%s%s", "https://www.baidu.com/s?wd=",text);
 	ShellExecuteA(NULL, "open", url,"", "", SW_SHOW);
 	free(url);
+}
+
+//在默认浏览器中搜索
+void WebSearchAuto()
+{
+	copy();
+	if (OpenClipboard(NULL))
+	{
+		//获得剪贴板数据
+		HGLOBAL hMem = GetClipboardData(CF_TEXT);
+		if (NULL != hMem)
+		{
+			char* lpStr = (char*)::GlobalLock(hMem);
+			if (NULL != lpStr)
+			{
+				WebSearchText(lpStr);
+				GlobalUnlock(hMem);
+				EmptyClipboard();
+			}
+		}
+		CloseClipboard();
+	}
 }
