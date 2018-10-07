@@ -152,7 +152,7 @@ void WebSearchAuto()
 		HGLOBAL hMem = GetClipboardData(CF_TEXT);
 		if (NULL != hMem)
 		{
-			char* lpStr = (char*)::GlobalLock(hMem);
+			char* lpStr = (char*)GlobalLock(hMem);
 			if (NULL != lpStr)
 			{
 				WebSearchText(lpStr);
