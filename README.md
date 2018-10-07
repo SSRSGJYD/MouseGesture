@@ -12,31 +12,48 @@ GUI部分文件说明：
 
 功能API部分文件说明：
 
-+ action.h, action.cpp: 模拟按键、命令的实现
++ action.h, action.cpp: C语言实现的模拟按键、命令的实现
++ action.asm, action.lib: masm源代码
++ action.obj: 目标文件
++ action.lib: 生成的静态库
+
+
 
 #### 功能API：
 
-```cpp
-void copy();
-void paste();
-void Win();
-void AltTab(); //切换任务
-void WinTab(); //查看任务
-void WinD(); //桌面
-void WinUp(); //最大化；上半屏
-void WinDown(); //最小化；下半屏
-void WinLeft(); //左半屏
-void WinRight(); //右半屏
+```assembly
+copy PROTO STDCALL
+paste PROTO STDCALL
+Win PROTO STDCALL
+AltTab PROTO STDCALL ;切换任务
+WinTab PROTO STDCALL ;查看任务
+WinD PROTO STDCALL ;桌面
+WinUp PROTO STDCALL ;最大化；上半屏
+WinDown PROTO STDCALL ;最小化；下半屏
+WinLeft PROTO STDCALL ;左半屏
+WinRight PROTO STDCALL ;右半屏
+AltLeft PROTO STDCALL ;后退
+AltRight PROTO STDCALL ;前进
+mute PROTO STDCALL, ;静音
+    hgWnd:DWORD
+soundUp PROTO STDCALL, ;增大音量
+    hgWnd:DWORD
+soundDown PROTO STDCALL, ;减小音量
+    hgWnd:DWORD
 
-//控制面板
-void ControlPanel();
-//任务管理器
-void TaskManager();
-//记事本
-void NotePad();
-//计算器
-void Calculator();
-//在默认浏览器中搜索
-void WebSearch(const char* text);
+ControlPanel PROTO STDCALL ;控制面板
+TaskManager PROTO STDCALL ;任务管理器
+NotePad PROTO STDCALL ;记事本
+Calculator PROTO STDCALL ;计算器
+WebSearchText PROTO STDCALL, ;在默认浏览器中搜索
+   text:PTR BYTE
+WebSearchAuto PROTO STDCALL ;在默认浏览器中搜索
+```
+
+使用方法：
+
+```assembly
+INCLUDE action.inc
+INCLUDELIB action.lib
 ```
 
