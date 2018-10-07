@@ -1,10 +1,11 @@
 .386
-model .flat,STDCALL
+.model flat,STDCALL
 
 INCLUDE C:\masm32\include\kernel32.inc
 INCLUDE C:\masm32\include\user32.inc
 INCLUDE C:\masm32\include\shell32.inc
 INCLUDE C:\masm32\include\msvcrt.inc
+INCLUDE C:\masm32\include\windows.inc
 INCLUDE action.inc
 
 INCLUDELIB C:\masm32\lib\kernel32.lib
@@ -16,7 +17,7 @@ INCLUDELIB C:\masm32\lib\msvcrt.lib
 arg_ControlPanel_1 BYTE "control",0
 arg_TaskManager_1 BYTE "open",0
 arg_TaskManager_2 BYTE "taskmgr",0
-arg_TaskManager_3 BYTE "",0
+arg_TaskManager_3 BYTE 0
 arg_NotePad_1 BYTE "notepad",0
 arg_Calculator_1 BYTE "calc",0
 arg_WebSearchText_1 BYTE "%s%s",0
@@ -27,19 +28,21 @@ arg_WebSearchText_url BYTE 0
 
 .code
 ; ==========================================================
-OneKeyAction PROC STDCALL
+OneKeyAction PROC STDCALL,
     key:BYTE, 
     dwFlags:DWORD
 ; requires: key to invoke and dwFlags
 ;===========================================================
     invoke keybd_event, key, 0, dwFlags, 0
-	invoke keybd_event, key, 0, dwFlags| KEYEVENTF_KEYUP, 0
+    mov eax, dwFlags
+    or eax, KEYEVENTF_KEYUP
+	invoke keybd_event, key, 0, eax , 0
     ret
 OneKeyAction ENDP
 
 
 ; ==========================================================
-TwoKeysAction PROC STDCALL
+TwoKeysAction PROC STDCALL,
     key1:BYTE, 
     dwFlags1:DWORD,
     key2:BYTE, 
@@ -49,8 +52,12 @@ TwoKeysAction PROC STDCALL
     invoke keybd_event, key1, 0, dwFlags1, 0
     invoke keybd_event, key2, 0, dwFlags2, 0
     invoke Sleep, KEYDOWNTIME
-    invoke keybd_event, key1, 0, dwFlags1| KEYEVENTF_KEYUP, 0
-	invoke keybd_event, key2, 0, dwFlags2| KEYEVENTF_KEYUP, 0
+    mov eax, dwFlags1
+    or eax, KEYEVENTF_KEYUP
+    invoke keybd_event, key1, 0, eax, 0
+    mov eax, dwFlags2
+    or eax, KEYEVENTF_KEYUP
+	invoke keybd_event, key2, 0, eax, 0
     ret
 TwoKeysAction ENDP 
 
@@ -59,7 +66,7 @@ TwoKeysAction ENDP
 copy PROC STDCALL
 ; requires: none
 ; ==========================================================
-    invoke TwoKeysAction, VK_CONTROL, 0, 0x43, 0
+    invoke TwoKeysAction, VK_CONTROL, 0, 43h, 0
     ret
 copy ENDP
 
@@ -68,7 +75,7 @@ copy ENDP
 paste PROC STDCALL
 ; requires: none
 ; ==========================================================
-    invoke TwoKeysAction, VK_CONTROL, 0, 0x56, 0
+    invoke TwoKeysAction, VK_CONTROL, 0, 56h, 0
     ret
 paste ENDP
 
@@ -104,7 +111,7 @@ WinTab ENDP
 WinD PROC STDCALL
 ; requires: none
 ; ==========================================================
-    invoke TwoKeysAction, VK_LWIN, 0, 0x44, 0
+    invoke TwoKeysAction, VK_LWIN, 0, 44h, 0
     ret
 WinD ENDP
 
@@ -164,28 +171,31 @@ AltRight ENDP
 
 
 ; ==========================================================
-mute PROC STDCALL
+mute PROC STDCALL,
+    hgWnd:DWORD
 ; requires: hgWnd:HWND
 ; ==========================================================
-    invoke SendMessage, hgWnd, WM_APPCOMMAND, 0x200eb0, APPCOMMAND_VOLUME_MUTE * 0x10000
+    invoke SendMessage, hgWnd, WM_APPCOMMAND, 200eb0h, APPCOMMAND_VOLUME_MUTE * 10000h
     ret
 mute ENDP
 
 
 ; ==========================================================
-soundUp PROC STDCALL
+soundUp PROC STDCALL,
+    hgWnd:DWORD
 ; requires: hgWnd:HWND
 ; ==========================================================
-    invoke SendMessage, hgWnd, WM_APPCOMMAND, 0x30292, APPCOMMAND_VOLUME_UP * 0x10000
+    invoke SendMessage, hgWnd, WM_APPCOMMAND, 30292h, APPCOMMAND_VOLUME_UP * 10000h
     ret
 soundUp ENDP
 
 
 ; ==========================================================
-soundDown PROC STDCALL
+soundDown PROC STDCALL,
+    hgWnd:DWORD
 ; requires: hgWnd:HWND
 ; ==========================================================
-    invoke SendMessage, hgWnd, WM_APPCOMMAND, 0x30292, APPCOMMAND_VOLUME_DOWN * 0x10000
+    invoke SendMessage, hgWnd, WM_APPCOMMAND, 30292h, APPCOMMAND_VOLUME_DOWN * 10000h
     ret
 soundDown ENDP
 
@@ -263,4 +273,4 @@ WebSearchAuto PROC STDCALL
     ret
 WebSearchAuto ENDP
 
-
+END
