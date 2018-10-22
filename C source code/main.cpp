@@ -1,102 +1,175 @@
 #include "hook.h"
 
-HWND hgWnd;
-HHOOK key_hook, mouse_hook;
+HWND saveButton, hgWindow;
+HHOOK keyHook, mouseHook;
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+TCHAR clickTestText[6] = TEXT("Time0");
+TCHAR ListItem[256];
+
+const int numGestures = 8;
+const int numOperations = 21;
+int operationIndexes[numGestures] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+const TCHAR Planets[numOperations][10] = {
+    TEXT("å¤åˆ¶"), TEXT("ç²˜è´´"), TEXT("å¼€å§‹"), TEXT("åˆ‡æ¢ä»»åŠ¡"),
+    TEXT("æŸ¥çœ‹ä»»åŠ¡"), TEXT("æ¡Œé¢"), TEXT("æœ€å¤§åŒ–/ä¸ŠåŠå±"), TEXT("æœ€å°åŒ–/ä¸‹åŠå±"),
+    TEXT("å·¦åŠå±"), TEXT("å³åŠå±"), TEXT("åŽé€€"), TEXT("å‰è¿›"), TEXT("é™éŸ³"),
+    TEXT("å¢žå¤§éŸ³é‡"), TEXT("å‡å°éŸ³é‡"), TEXT("æŽ§åˆ¶é¢æ¿"), TEXT("ä»»åŠ¡ç®¡ç†å™¨"),
+    TEXT("è®°äº‹æœ¬"), TEXT("è®¡ç®—å™¨"), TEXT("é»˜è®¤æµè§ˆå™¨ä¸­æœç´¢"), TEXT("é»˜è®¤æµè§ˆå™¨ä¸­æœç´¢2")
+};
+
+const TCHAR GestureNames[numGestures][10] = {
+    TEXT("å·¦åˆ’"), TEXT("å³åˆ’"), TEXT("ä¸Šåˆ’"), TEXT("ä¸‹åˆ’"), TEXT("å·¦-ä¸‹"), TEXT("å·¦-ä¸Š"), TEXT("å³-ä¸‹"), TEXT("å³-ä¸Š")
+};
+
+const TCHAR errorInfoText[] = TEXT("çª—å£æ³¨å†Œå¤±è´¥ï¼");
+const TCHAR errorInfoText2[] = TEXT("çª—å£åˆ›å»ºå¤±è´¥ï¼");
+const TCHAR errorInfoTitle[] = TEXT("é”™è¯¯");
+
+const int comboHMenuBase = 5000;
+const TCHAR staticTypeName[8] = TEXT("STATIC");
+const TCHAR comboTypeName[9] = TEXT("COMBOBOX");
+const int comboBaseXPos = 100;
+const int comboBaseYPos = 35;
+const int comboWidth = 160;
+const int comboHeight = 20 * numOperations;
+const int settingAdder = 30;
+
+const TCHAR windowClassName[14] = TEXT("myWindowClass");
+const TCHAR windowName[13] = TEXT("MouseGesture");
+const int windowWidth = comboBaseXPos + comboWidth + 80;
+const int windowHeight = comboBaseYPos + settingAdder * numGestures + 120;
+
+const TCHAR buttonTypeName[7] = TEXT("BUTTON");
+const TCHAR buttonText[3] = TEXT("ä¿å­˜");
+const int buttonWidth = 80;
+const int buttonHeight = 25;
+const int buttonPosX = windowWidth - buttonWidth - 80;
+const int buttonPosY = windowHeight - buttonHeight - 75;
+const HMENU buttonHMenu = (HMENU)8;
+
+const TCHAR nullText[1] = TEXT("");
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	hgWnd = hwnd;
-
-	switch (msg)
-	{
-	case WM_CLOSE:
-		DestroyWindow(hwnd);
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	default:
-		return DefWindowProc(hwnd, msg, wParam, lParam);
-	}
-	return 0;
+    int wmId = LOWORD(wParam);
+    int wmEvent = HIWORD(wParam);
+    switch (uMsg)
+    {
+    case WM_CLOSE:
+        DestroyWindow(hWnd);
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    case WM_COMMAND:
+        if (wmId == int(buttonHMenu) && wmEvent == BN_CLICKED) {
+            clickTestText[4] = L'0' + (clickTestText[4] - L'0' + 1) % 10;
+            SetWindowText(saveButton, clickTestText);
+            break;
+        }
+        else if (wmId >= comboHMenuBase && wmId < comboHMenuBase + numGestures && wmEvent == CBN_SELCHANGE)
+        {
+            int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+            SendMessage((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)ItemIndex, (LPARAM)ListItem);
+            MessageBox(hWnd, (LPCWSTR)ListItem, TEXT("Item Selected"), MB_OK);
+            break;
+        }
+        // Here don't write break on purpose!
+    default:
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+    return 0;
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-	LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    WNDCLASSEX wc;
+    HWND hWinMain;
+    MSG Msg;
+    HWND hWndComboBox;
 
-	WNDCLASSEX wc;
-	HWND hwnd;
-	MSG Msg;
-	char text[30];
+    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.style = 0;
+    wc.lpfnWndProc = WndProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = 0;
+    wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszMenuName = NULL;
+    wc.lpszClassName = windowClassName;
+    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
-	// ÉèÖÃ×¢²á´°¿Ú½á¹¹Ìå
-	wc.cbSize = sizeof(WNDCLASSEX);              // ×¢²á´°¿Ú½á¹¹ÌåµÄ´óÐ¡
-	wc.style = 0;                               // ´°¿ÚµÄÑùÊ½
-	wc.lpfnWndProc = WndProc;                         // Ö¸Ïò´°¿Ú´¦Àí¹ý³ÌµÄº¯ÊýÖ¸Õë
-	wc.cbClsExtra = 0;                               // Ö¸¶¨½ô¸úÔÚ´°¿ÚÀà½á¹¹ºóµÄ¸½¼Ó×Ö½ÚÊý
-	wc.cbWndExtra = 0;                               // Ö¸¶¨½ô¸úÔÚ´°¿ÚÊÂÀýºóµÄ¸½¼Ó×Ö½ÚÊý
-	wc.hInstance = hInstance;                       // ±¾Ä£¿éµÄÊµÀý¾ä±ú
-	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION); // Í¼±êµÄ¾ä±ú
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);     // ¹â±êµÄ¾ä±ú
-	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);        // ±³¾°»­Ë¢µÄ¾ä±ú
-	wc.lpszMenuName = NULL;                            // Ö¸Ïò²Ëµ¥µÄÖ¸Õë
-	wc.lpszClassName = L"myWindowClass";                     // Ö¸ÏòÀàÃû³ÆµÄÖ¸Õë
-	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION); // ºÍ´°¿ÚÀà¹ØÁªµÄÐ¡Í¼±ê
+    if (!RegisterClassEx(&wc))
+    {
+        MessageBox(NULL, errorInfoText, errorInfoTitle, MB_ICONEXCLAMATION | MB_OK);
+        return 0;
+    }
 
-												  // 2. Ê¹ÓÃ¡¾´°¿Ú½á¹¹Ìå¡¿×¢²á´°¿Ú
-	if (!RegisterClassEx(&wc))
-	{
-		MessageBox(NULL, TEXT("´°¿Ú×¢²áÊ§°Ü£¡"), TEXT("´íÎó"), MB_ICONEXCLAMATION | MB_OK);
-		return 0;
-	}
+    hWinMain = CreateWindowEx(WS_EX_CLIENTEDGE, windowClassName, windowName, WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, NULL, NULL, hInstance, NULL);
 
-	// ´´½¨´°¿Ú
-	hwnd = CreateWindowEx(
-		WS_EX_CLIENTEDGE,       // ´°¿ÚµÄÀ©Õ¹·ç¸ñ
-		L"myWindowClass",            // Ö¸Ïò×¢²áÀàÃûµÄÖ¸Õë
-		TEXT("MouseGesture"),       // Ö¸Ïò´°¿ÚÃû³ÆµÄÖ¸Õë
-		WS_OVERLAPPEDWINDOW,    // ´°¿Ú·ç¸ñ
-		CW_USEDEFAULT, CW_USEDEFAULT, 600, 500, // ´°¿ÚµÄ x,y ×ø±êÒÔ¼°¿í¸ß
-		NULL,                   // ¸¸´°¿ÚµÄ¾ä±ú
-		NULL,                   // ²Ëµ¥µÄ¾ä±ú
-		hInstance,              // Ó¦ÓÃ³ÌÐòÊµÀýµÄ¾ä±ú
-		NULL                    // Ö¸Ïò´°¿ÚµÄ´´½¨Êý¾Ý
-	);
+    if (hWinMain == NULL)
+    {
+        MessageBox(NULL, errorInfoText2, errorInfoTitle, MB_ICONEXCLAMATION | MB_OK);
+        return 0;
+    }
 
-	if (hwnd == NULL)
-	{
-		MessageBox(NULL, TEXT("´°¿Ú´´½¨Ê§°Ü"), TEXT("´íÎó"), MB_ICONEXCLAMATION | MB_OK);
-		return 0;
-	}
+    hgWindow = hWinMain;
 
-	// ÏÔÊ¾´°¿Ú
-	ShowWindow(hwnd, nCmdShow);
-	UpdateWindow(hwnd);
+    ShowWindow(hWinMain, nCmdShow);
+    UpdateWindow(hWinMain);
 
-	// ÉèÖÃ¼üÅÌÈ«¾Ö¼àÌý
-	key_hook = SetWindowsHookEx(
-		WH_KEYBOARD_LL, // ¼àÌýÀàÐÍ¡¾¼üÅÌ¡¿
-		KeyboardProc,   // ´¦Àíº¯Êý
-		hInstance,      // µ±Ç°ÊµÀý¾ä±ú
-		0               // ¼àÌý´°¿Ú¾ä±ú(NULLÎªÈ«¾Ö¼àÌý)
-	);
+    //// ä¸‹é¢ä¸€è¡Œä»£ç åˆ›å»ºè¾“å…¥æ¡†
+    //CreateWindowEx(0, L"EDIT", 0, WS_BORDER | WS_CHILD | WS_VISIBLE, 40, 400, 50, 18, hwnd, 0, hInstance, 0);
 
-	// ÉèÖÃÊó±êÈ«¾Ö¼àÌý
-	mouse_hook = SetWindowsHookEx(
-		WH_MOUSE_LL, // ¼àÌýÀàÐÍ¡¾¼üÅÌ¡¿
-		MouseProc,   // ´¦Àíº¯Êý
-		hInstance,      // µ±Ç°ÊµÀý¾ä±ú
-		0               // ¼àÌý´°¿Ú¾ä±ú(NULLÎªÈ«¾Ö¼àÌý)
-	);
+    saveButton = CreateWindowEx(0, buttonTypeName, buttonText, WS_CHILD | WS_VISIBLE, buttonPosX, buttonPosY, buttonWidth, buttonHeight, hWinMain, buttonHMenu, hInstance, NULL);
 
+    //// è®¾ç½®é”®ç›˜å…¨å±€ç›‘å¬
+    //key_hook = SetWindowsHookEx(
+    //	WH_KEYBOARD_LL, // ç›‘å¬ç±»åž‹ã€é”®ç›˜ã€‘
+    //	KeyboardProc,   // å¤„ç†å‡½æ•°
+    //	hInstance,      // å½“å‰å®žä¾‹å¥æŸ„
+    //	0               // ç›‘å¬çª—å£å¥æŸ„(NULLä¸ºå…¨å±€ç›‘å¬)
+    //);
 
-	// ÏûÏ¢Ñ­»·
-	while (GetMessage(&Msg, NULL, 0, 0))
-	{
-		TranslateMessage(&Msg);
-		DispatchMessage(&Msg);
-	}
+    //// è®¾ç½®é¼ æ ‡å…¨å±€ç›‘å¬
+    //mouse_hook = SetWindowsHookEx(
+    //	WH_MOUSE_LL, // ç›‘å¬ç±»åž‹ã€é¼ æ ‡ã€‘
+    //	MouseProc,   // å¤„ç†å‡½æ•°
+    //	hInstance,      // å½“å‰å®žä¾‹å¥æŸ„
+    //	0               // ç›‘å¬çª—å£å¥æŸ„(NULLä¸ºå…¨å±€ç›‘å¬)
+    //);
 
-	return 0;
+    for (int i = 0; i < numGestures; i++) {
+        hWndComboBox = CreateWindowEx(0, comboTypeName, nullText, CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+            comboBaseXPos, comboBaseYPos + i * settingAdder, comboWidth, comboHeight, hWinMain, (HMENU)(comboHMenuBase + i), hInstance, NULL);
+
+        CreateWindowEx(0, staticTypeName, GestureNames[i], WS_CHILD | WS_VISIBLE, comboBaseXPos - 60, comboBaseYPos + 5 + i * settingAdder, 50, 20, hWinMain, NULL, hInstance, NULL);
+
+        int  k = 0;
+
+        memset(&ListItem, 0, sizeof(ListItem));
+        for (k = 0; k < numOperations; k++)
+        {
+            wcscpy_s(ListItem, sizeof(ListItem) / sizeof(TCHAR), (TCHAR*)Planets[k]);
+
+            // Add string to combobox.
+            SendMessage(hWndComboBox, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)ListItem);
+        }
+
+        // Send the CB_SETCURSEL message to display an initial item 
+        //  in the selection field  
+        SendMessage(hWndComboBox, CB_SETCURSEL, (WPARAM)(operationIndexes[i]), (LPARAM)0);
+    }
+
+    while (GetMessage(&Msg, NULL, 0, 0))
+    {
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
+
+    return 0;
 }
