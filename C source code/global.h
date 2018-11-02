@@ -2,5 +2,6 @@
 
 #include <windows.h>
 
-extern HWND hgWnd;
-extern HHOOK key_hook, mouse_hook;
+extern HWND hgWindow, hDesktop;
+extern HHOOK keyHook, mouseHook;
+//extern 

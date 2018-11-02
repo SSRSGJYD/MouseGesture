@@ -7,19 +7,32 @@ include         gdi32.inc
 includelib      gdi32.lib
 include         user32.inc
 includelib      user32.lib
-include			kernel32.inc
+include         kernel32.inc
 includelib      kernel32.lib
+include         msvcrt.inc
+includelib      msvcrt.lib
+include         action.inc
+includelib      action.lib
 
 .data
 saveButton      DWORD   ?
 hgWindow        DWORD   ?
+hDesktop        DWORD   ?
 keyHook         DWORD   ?
 mouseHook       DWORD   ?
 
 clickTestText   BYTE    'Time0', 0
 ListItem        BYTE    256 dup(?)
+MsgTitle        BYTE    100 dup(?)
+MsgText         BYTE    200 dup(?)
+itemSelected    BYTE    "Selected operation No.%d for gesture No.%d", 0
+selectedDetail  BYTE    "已变更操作“%s”为执行“%s”", 0
 
 operationIndexes    DWORD   0, 1, 2, 3, 4, 5, 6, 7
+
+; action list
+ActionList      DWORD   OFFSET NotePad, OFFSET Calculator
+; end of action list
 
 .const
 
@@ -96,7 +109,7 @@ nullText        BYTE    0
 
 .code
 
-_ProcWinMain    proc    uses ebx, hWnd, uMsg, wParam, lParam
+_ProcWinMain    proc    uses ebx edx, hWnd, uMsg, wParam, lParam
                 local   wmId: WORD
                 local   wmEvent: WORD
                 lea     eax, wParam
@@ -124,20 +137,52 @@ _ProcWinMain    proc    uses ebx, hWnd, uMsg, wParam, lParam
                                 .elseif wmId >= comboHMenuBase && wmId < comboHMenuBase + numGestures && wmEvent == CBN_SELCHANGE
                                         invoke  SendMessage, lParam, CB_GETCURSEL, 0, 0
                                         mov     ebx, eax
+                                        push    ebx
+                                        movzx   eax, wmId
+                                        sub     eax, comboHMenuBase
+                                        push    eax
+                                        invoke  crt_sprintf, OFFSET MsgTitle, OFFSET itemSelected, ebx, ax
+                                        pop     eax
+                                        pop     ebx
+                                        mov     edx, 4
+                                        mul     edx
+                                        push    eax
+                                        add     eax, OFFSET operationIndexes
+                                        mov     [eax], ebx
                                         invoke  SendMessage, lParam, CB_GETLBTEXT, ebx, OFFSET ListItem
-                                        invoke  MessageBox, hWnd, OFFSET ListItem, OFFSET buttonText, MB_OK
+                                        pop     eax
+                                        invoke  crt_sprintf, OFFSET MsgText, OFFSET selectedDetail, GestureNames[eax], OFFSET ListItem
+                                        invoke  MessageBox, hWnd, OFFSET MsgText, OFFSET MsgTitle, MB_OK
                                         mov     eax, 0
                                         ret
                                 .endif
                         .endif
                         invoke  DefWindowProc,hWnd,uMsg,wParam,lParam
-						ret
+                        ret
                 .endif
                 mov     eax, 0
                 ret
 
 _ProcWinMain    endp
 
+; hook.cpp
+MouseProc       proc    nCode: DWORD, wParam: DWORD, lParam: DWORD
+
+                .if     nCode >= 0
+                        mov     al, clickTestText[4]
+                        inc     al
+                        .if     al > '9'
+                                mov     al, '0'
+                        .endif
+                        mov     clickTestText[4], al
+                        invoke  SetWindowText, saveButton, OFFSET clickTestText;
+                        mov     eax, 0
+                .endif
+                invoke  CallNextHookEx, keyHook, nCode, wParam, lParam
+                mov     eax, 0
+                ret
+MouseProc       endp
+; end of hook.cpp part
 
 _WinMain        proc    uses ebx esi
                 local   hInstance: DWORD
@@ -146,9 +191,14 @@ _WinMain        proc    uses ebx esi
                 local   Msg: MSG
                 local   hWndComboBox: DWORD
 
+                call    ActionList[4]
+
                 invoke  GetModuleHandle,NULL
                 mov     hInstance,eax
                 invoke  RtlZeroMemory,addr wc, sizeof wc
+
+                invoke  GetDesktopWindow
+                mov     hDesktop, eax
 
                 mov     wc.cbSize, sizeof WNDCLASSEX
                 mov     wc.style, 0
@@ -194,10 +244,14 @@ _WinMain        proc    uses ebx esi
                 invoke  ShowWindow, hWinMain, SW_SHOWNORMAL
                 invoke  UpdateWindow,hWinMain
 
-				mov ebx, WS_CHILD
-				or ebx, WS_VISIBLE
-				invoke  CreateWindowEx, 0, offset buttonTypeName, offset buttonText, ebx, buttonPosX, buttonPosY, buttonWidth, buttonHeight, hWinMain, buttonHMenu, hInstance, 0
+                mov     ebx, WS_CHILD
+                or      ebx, WS_VISIBLE
+                invoke  CreateWindowEx, 0, offset buttonTypeName, offset buttonText, ebx, buttonPosX, buttonPosY, buttonWidth, buttonHeight, hWinMain, buttonHMenu, hInstance, 0
                 mov     saveButton, eax
+
+                ; set mouse hook
+                invoke  SetWindowsHookEx, WH_MOUSE_LL, MouseProc, hInstance, 0
+                mov     mouseHook, eax
 
                 mov     ecx, numGestures
                 mov     esi, 0
@@ -242,7 +296,7 @@ _WinMain        proc    uses ebx esi
                                         cmp     al, 0
                                         jne     CopyStr
                                 ; Add string to combobox.
-                                INVOKE  SendMessage, hWndComboBox, CB_ADDSTRING, 0, OFFSET ListItem
+                                invoke  SendMessage, hWndComboBox, CB_ADDSTRING, 0, OFFSET ListItem
                                 pop     ecx
                                 add     esi, 4
                                 loop    OperationsListSet
@@ -256,7 +310,7 @@ _WinMain        proc    uses ebx esi
                         mov     eax, esi
                         mov     ebx, 4
                         mul     ebx
-                        INVOKE  SendMessage, hWndComboBox, CB_SETCURSEL, operationIndexes[eax], 0
+                        invoke  SendMessage, hWndComboBox, CB_SETCURSEL, operationIndexes[eax], 0
 
                         pop     edx
                         add     edx, settingAdder - 5
@@ -276,6 +330,6 @@ _WinMain        proc    uses ebx esi
 _WinMain        endp
 
 start:
-                call	_WinMain
-                invoke	ExitProcess, NULL
-                end		start
+                call    _WinMain
+                invoke  ExitProcess, NULL
+                end     start
